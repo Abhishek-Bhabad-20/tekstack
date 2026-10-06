@@ -2,13 +2,19 @@ const express = require("express");
 
 const app = express();
 
-// Configurable port
 const PORT = process.env.PORT || 3000;
 
-// Middleware to parse JSON
 app.use(express.json());
 
-// Users data
+// Request logging middleware
+app.use((req, res, next) => {
+    console.log(
+        `${new Date().toISOString()} - ${req.method} ${req.url}`
+    );
+    next();
+});
+
+// Users list
 const users = [
     {
         username: "Alwin",
@@ -42,20 +48,25 @@ const users = [
     }
 ];
 
-// Request logging middleware
-app.use((req, res, next) => {
-    console.log(
-        `${new Date().toISOString()} - ${req.method} ${req.url}`
-    );
-
-    next();
-});
-
-// Home route
+// Root route - users who accessed within last 10 days
 app.get("/", (req, res) => {
-    res.json({
-        message: "User Tracking REST API is running"
+
+    const today = new Date();
+
+    const tenDaysAgo = new Date();
+    tenDaysAgo.setDate(today.getDate() - 10);
+
+    const filteredUsers = users.filter((user) => {
+
+        const lastAccessDate = new Date(user.lastAccess);
+
+        return (
+            lastAccessDate >= tenDaysAgo &&
+            lastAccessDate <= today
+        );
     });
+
+    res.json(filteredUsers);
 });
 
 // Get all users
@@ -63,7 +74,7 @@ app.get("/api/users", (req, res) => {
     res.json(users);
 });
 
-// Get users who accessed the system within the last 10 days
+// Get recent users
 app.get("/api/users/recent", (req, res) => {
 
     const today = new Date();
@@ -71,17 +82,17 @@ app.get("/api/users/recent", (req, res) => {
     const tenDaysAgo = new Date();
     tenDaysAgo.setDate(today.getDate() - 10);
 
-    const recentUsers = users.filter((user) => {
+    const filteredUsers = users.filter((user) => {
 
         const lastAccessDate = new Date(user.lastAccess);
 
-        return lastAccessDate >= tenDaysAgo && lastAccessDate <= today;
+        return (
+            lastAccessDate >= tenDaysAgo &&
+            lastAccessDate <= today
+        );
     });
 
-    res.json({
-        count: recentUsers.length,
-        users: recentUsers
-    });
+    res.json(filteredUsers);
 });
 
 // Get user by username
@@ -90,7 +101,8 @@ app.get("/api/users/:username", (req, res) => {
     const username = req.params.username;
 
     const user = users.find(
-        (user) => user.username.toLowerCase() === username.toLowerCase()
+        (user) =>
+            user.username.toLowerCase() === username.toLowerCase()
     );
 
     if (!user) {
